@@ -2,6 +2,7 @@ package uk.ac.campus.errors.handlers;
 
 import uk.ac.campus.domain.ApiErrorPayload;
 
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
@@ -23,6 +24,10 @@ public class GlobalFaultBarrier implements ExceptionMapper<Throwable> {
 
     @Override
     public Response toResponse(Throwable thrown) {
+        if (thrown instanceof WebApplicationException) {
+            return ((WebApplicationException) thrown).getResponse();
+        }
+
         LOG.log(Level.SEVERE, "Unhandled fault intercepted by global barrier", thrown);
 
         ApiErrorPayload payload = new ApiErrorPayload(

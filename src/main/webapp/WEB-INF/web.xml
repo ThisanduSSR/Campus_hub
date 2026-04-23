@@ -22,8 +22,8 @@
     </servlet>
 
     <!-- 
-      Map the API to the versioned endpoint.
-      This matches the @ApplicationPath("/api/v1") annotation.
+      Map the Jersey servlet to /api/v1/* and let the servlet mapping define
+      the API base path. This makes the API available at /api/v1/.
     -->
     <servlet-mapping>
         <servlet-name>CampusHubAPI</servlet-name>

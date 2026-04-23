@@ -120,6 +120,48 @@ public class SensorController {
         return Response.ok(sensor).build();
     }
 
+    @PUT
+    @Path("/{sensorId}")
+    public Response updateSensor(@PathParam("sensorId") String sensorId, Sensor incoming) {
+        if (incoming == null) {
+            return badRequest("Request body is required.");
+        }
+        if (isBlank(incoming.getId())) {
+            return badRequest("Field 'id' is required in the payload.");
+        }
+        if (!sensorId.equals(incoming.getId())) {
+            return badRequest("Sensor ID in the path must match the payload id.");
+        }
+        if (isBlank(incoming.getType())) {
+            return badRequest("Field 'type' is required.");
+        }
+        if (isBlank(incoming.getRoomId())) {
+            return badRequest("Field 'roomId' is required.");
+        }
+        if (isBlank(incoming.getStatus())) {
+            return badRequest("Field 'status' is required.");
+        }
+        if (!Sensor.DeviceStatus.isValid(incoming.getStatus())) {
+            return badRequest("Field 'status' must be one of: ACTIVE, MAINTENANCE, OFFLINE.");
+        }
+
+        Sensor existing = store.findSensor(sensorId)
+                .orElseThrow(() -> new EntityNotFoundException("Sensor", sensorId));
+
+        String oldRoomId = existing.getRoomId();
+        existing.setType(incoming.getType());
+        existing.setStatus(incoming.getStatus());
+        existing.setRoomId(incoming.getRoomId());
+
+        if (!incoming.getRoomId().equals(oldRoomId)) {
+            store.findRoom(oldRoomId).ifPresent(room -> room.detachDevice(sensorId));
+            store.findRoom(incoming.getRoomId()).ifPresent(room -> room.attachDevice(sensorId));
+        }
+
+        store.saveSensor(existing);
+        return Response.ok(existing).build();
+    }
+
     /**
      * Part 4.1 — Sub-Resource Locator for sensor readings.
      *

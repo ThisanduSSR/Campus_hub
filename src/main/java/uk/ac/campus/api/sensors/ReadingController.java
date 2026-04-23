@@ -75,7 +75,7 @@ public class ReadingController {
         // Retrieve parent sensor — existence already verified by SensorController locator
         Sensor parent = store.findSensor(sensorId).get();
 
-        if (parent.isUnderMaintenance()) {
+        if (parent.isOfflineOrMaintenance()) {
             throw new DeviceOfflineException(sensorId);
         }
 

@@ -79,6 +79,10 @@ public final class InMemoryStore {
         deviceRegistry.put(sensor.getId(), sensor);
     }
 
+    public boolean removeSensor(String sensorId) {
+        return deviceRegistry.remove(sensorId) != null;
+    }
+
     // -------------------------------------------------------------------------
     // Reading / Telemetry operations
     // -------------------------------------------------------------------------

@@ -39,6 +39,11 @@ public class Sensor {
         return DeviceStatus.MAINTENANCE.name().equalsIgnoreCase(this.status);
     }
 
+    public boolean isOfflineOrMaintenance() {
+        return DeviceStatus.OFFLINE.name().equalsIgnoreCase(this.status) ||
+               DeviceStatus.MAINTENANCE.name().equalsIgnoreCase(this.status);
+    }
+
     public void updateLatestReading(double latestValue) {
         this.currentValue = latestValue;
     }

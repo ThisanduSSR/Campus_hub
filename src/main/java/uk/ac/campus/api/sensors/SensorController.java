@@ -163,6 +163,27 @@ public class SensorController {
     }
 
     /**
+     * DELETE /api/v1/sensors/{sensorId}
+     * Removes a sensor and detaches it from its room.
+     * Returns 204 No Content on success, 404 if not found.
+     */
+    @DELETE
+    @Path("/{sensorId}")
+    public Response deleteSensor(@PathParam("sensorId") String sensorId) {
+        Sensor sensor = store.findSensor(sensorId)
+                .orElseThrow(() -> new EntityNotFoundException("Sensor", sensorId));
+
+        // Detach from parent room
+        store.findRoom(sensor.getRoomId())
+             .ifPresent(room -> room.detachDevice(sensorId));
+
+        // Remove the sensor from the store
+        store.removeSensor(sensorId);
+
+        return Response.noContent().build();
+    }
+
+    /**
      * Part 4.1 — Sub-Resource Locator for sensor readings.
      *
      * This method carries no HTTP-method annotation. Jersey recognises it as a

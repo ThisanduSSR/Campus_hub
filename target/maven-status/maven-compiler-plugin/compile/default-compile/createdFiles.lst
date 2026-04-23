@@ -1,7 +1,6 @@
 uk\ac\campus\api\discovery\DiscoveryController.class
 uk\ac\campus\errors\handlers\UnresolvableReferenceHandler.class
 uk\ac\campus\api\sensors\ReadingController.class
-uk\ac\campus\boot\ServerLauncher.class
 uk\ac\campus\errors\handlers\DeviceOfflineHandler.class
 uk\ac\campus\domain\ApiErrorPayload.class
 uk\ac\campus\repository\InMemoryStore.class

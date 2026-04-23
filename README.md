@@ -1,137 +1,141 @@
 # Campus Hub IoT Management API
 
-A RESTful API built with JAX-RS (Jersey) and an embedded Grizzly HTTP server for managing campus rooms and IoT sensor devices. No external servlet container or database is required — all data is held in-memory using `ConcurrentHashMap`.
+A Java-based RESTful API for managing campus rooms and IoT sensors. This application is packaged as a WAR and designed to run in a servlet container such as Apache Tomcat.
 
----
+## Overview
+
+- API base path: `/api/v1`
+- Technologies: Java 11, Maven, Jersey JAX-RS, Jackson JSON
+- Data persistence: in-memory store using `ConcurrentHashMap`
+- Deployment: WAR file named `ROOT.war` for root context deployment
+- Error handling: custom exception mappers with structured JSON responses
 
 ## Project Structure
 
 ```
-campus-hub-api/
+Campus_hub/
 ├── pom.xml
-└── src/main/java/uk/ac/campus/
-    ├── boot/                        # Server bootstrap
-    │   ├── CampusHubApp.java        # JAX-RS Application (@ApplicationPath)
-    │   └── ServerLauncher.java      # Main entry point (Grizzly server)
-    ├── domain/                      # Plain data models (POJOs)
-    │   ├── Room.java
-    │   ├── Sensor.java
-    │   ├── ReadingRecord.java       # Equivalent to SensorReading
-    │   └── ApiErrorPayload.java     # Uniform error response envelope
-    ├── repository/
-    │   └── InMemoryStore.java       # Singleton ConcurrentHashMap data store
-    ├── api/                         # JAX-RS resource controllers
-    │   ├── discovery/DiscoveryController.java
-    │   ├── rooms/RoomController.java
-    │   └── sensors/
-    │       ├── SensorController.java
-    │       └── ReadingController.java   # Sub-resource (not path-registered)
-    ├── errors/
-    │   ├── exceptions/              # Custom runtime exceptions
-    │   │   ├── EntityNotFoundException.java
-    │   │   ├── RoomOccupiedException.java
-    │   │   ├── UnresolvableReferenceException.java
-    │   │   └── DeviceOfflineException.java
-    │   └── handlers/                # JAX-RS ExceptionMappers
-    │       ├── EntityNotFoundHandler.java
-    │       ├── RoomOccupiedHandler.java
-    │       ├── UnresolvableReferenceHandler.java
-    │       ├── DeviceOfflineHandler.java
-    │       └── GlobalFaultBarrier.java
-    └── middleware/
-        └── RequestAuditFilter.java  # Request/response logging filter
+├── README.md
+├── src/main/java/uk/ac/campus/
+│   ├── boot/                    # JAX-RS application bootstrap
+│   │   └── CampusHubApp.java
+│   ├── api/                     # API resource controllers
+│   │   ├── discovery/
+│   │   ├── rooms/
+│   │   └── sensors/
+│   ├── domain/                  # Data models
+│   ├── errors/                  # Custom exceptions and mappers
+│   ├── middleware/              # Request audit filter
+│   └── repository/              # In-memory data store
+└── src/main/webapp/WEB-INF/
+    └── web.xml                 # Jersey servlet configuration
 ```
 
----
+## Prerequisites
 
-## Build & Run
+- Java 11 or later
+- Maven 3.6 or later
+- Apache Tomcat 9+ (or another servlet container)
 
-### Prerequisites
-- Java 11+
-- Maven 3.6+
+## Build
 
-### Build
 ```bash
 mvn clean package
 ```
-This produces a fat JAR at `target/campus-hub-api-2.0.0.jar` with all dependencies bundled.
 
-### Run
-```bash
-java -jar target/campus-hub-api-2.0.0.jar
-```
-The API starts at `http://localhost:8080/api/v1`.
+This generates `target/ROOT.war`.
 
-### Alternatively (without packaging)
+## Deployment
+
+Copy `target/ROOT.war` into Tomcat's `webapps` directory and start Tomcat.
+
 ```bash
-mvn exec:java
+cp target/ROOT.war /path/to/tomcat/webapps/
 ```
 
----
+Because the WAR is named `ROOT.war`, the API is available at:
+
+```text
+http://localhost:8080/api/v1/
+```
+
+If deployed under a different context, replace `/api/v1/` with the deployed context path.
 
 ## API Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/v1` | Discovery — API manifest with HATEOAS links |
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/v1/` | API discovery manifest |
 | GET | `/api/v1/rooms` | List all rooms |
-| POST | `/api/v1/rooms` | Register a new room |
-| GET | `/api/v1/rooms/{roomId}` | Fetch a room by ID |
-| DELETE | `/api/v1/rooms/{roomId}` | Decommission a room (blocked if sensors present) |
-| GET | `/api/v1/sensors` | List sensors (supports `?type=` filter) |
-| POST | `/api/v1/sensors` | Register a new sensor |
-| GET | `/api/v1/sensors/{sensorId}` | Fetch a sensor by ID |
-| GET | `/api/v1/sensors/{sensorId}/readings` | Get telemetry history |
-| POST | `/api/v1/sensors/{sensorId}/readings` | Submit a new reading |
+| POST | `/api/v1/rooms` | Create a new room |
+| GET | `/api/v1/rooms/{roomId}` | Get room details |
+| DELETE | `/api/v1/rooms/{roomId}` | Delete a room (returns `409` if sensors exist) |
+| GET | `/api/v1/sensors` | List sensors; supports `?type=` filter |
+| POST | `/api/v1/sensors` | Create a new sensor |
+| GET | `/api/v1/sensors/{sensorId}` | Get sensor details |
+| PUT | `/api/v1/sensors/{sensorId}` | Update a sensor with payload ID validation |
+| GET | `/api/v1/sensors/{sensorId}/readings` | List sensor readings |
+| POST | `/api/v1/sensors/{sensorId}/readings` | Record a new sensor reading |
 
----
+## Expected Behavior
 
-## Sample `curl` Commands
+- `PUT /api/v1/sensors/{sensorId}` validates that the path ID matches the payload `id`; mismatches return `400 Bad Request`.
+- `DELETE /api/v1/rooms/{roomId}` returns `409 Conflict` if the room still has sensors.
+- Custom errors are returned in JSON payloads with `httpCode`, `reason`, and `detail`.
 
-### 1. Discover the API
+## Sample Requests
+
+### Discover API
+
 ```bash
-curl -s http://localhost:8080/api/v1 | python3 -m json.tool
+curl -s http://localhost:8080/api/v1/ | jq
 ```
 
-### 2. List all rooms
-```bash
-curl -s http://localhost:8080/api/v1/rooms
-```
+### Create a room
 
-### 3. Create a new room
 ```bash
-curl -s -X POST http://localhost:8080/api/v1/rooms \
+curl -X POST http://localhost:8080/api/v1/rooms \
   -H "Content-Type: application/json" \
-  -d '{"id":"CONF-401","name":"Innovation Hub","capacity":20}'
+  -d '{"id":"LIB-301","name":"Library Reference Section","capacity":30}'
 ```
 
-### 4. Register a new sensor
+### Create a sensor
+
 ```bash
-curl -s -X POST http://localhost:8080/api/v1/sensors \
+curl -X POST http://localhost:8080/api/v1/sensors \
   -H "Content-Type: application/json" \
-  -d '{"id":"TEMP-042","type":"Temperature","status":"ACTIVE","currentValue":21.0,"roomId":"CONF-401"}'
+  -d '{"id":"TEMP-LIB-301","type":"Temperature","status":"ACTIVE","currentValue":0.0,"roomId":"LIB-301"}'
 ```
 
-### 5. Submit a sensor reading
+### Update a sensor
+
 ```bash
-curl -s -X POST http://localhost:8080/api/v1/sensors/TEMP-042/readings \
+curl -X PUT http://localhost:8080/api/v1/sensors/TEMP-LIB-301 \
+  -H "Content-Type: application/json" \
+  -d '{"id":"TEMP-LIB-301","type":"Temperature","status":"ACTIVE","roomId":"LIB-301"}'
+```
+
+### Submit a reading
+
+```bash
+curl -X POST http://localhost:8080/api/v1/sensors/TEMP-LIB-301/readings \
   -H "Content-Type: application/json" \
   -d '{"value":23.7}'
 ```
 
-### 6. Filter sensors by type
+### Delete a room with sensors (expect 409)
+
 ```bash
-curl -s "http://localhost:8080/api/v1/sensors?type=CO2"
+curl -X DELETE http://localhost:8080/api/v1/rooms/LIB-301
 ```
 
-### 7. Attempt to delete a room that has sensors (expect 409)
-```bash
-curl -s -X DELETE http://localhost:8080/api/v1/sensors/ENG-201
-```
+## Notes
 
-### 8. Get reading history for a sensor
-```bash
-curl -s http://localhost:8080/api/v1/sensors/TEMP-042/readings
-```
+- This repo is ideal for demos, training, and API testing scenarios.
+- The data store is non-persistent and resets when the application restarts.
+- The servlet mapping is handled in `src/main/webapp/WEB-INF/web.xml`.
+- The application registers JAX-RS resources from `uk.ac.campus.api`, error handlers from `uk.ac.campus.errors.handlers`, and middleware from `uk.ac.campus.middleware`.
 
----
+## License
+
+Add your preferred license information here.
